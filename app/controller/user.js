@@ -5,9 +5,10 @@ let db = require('../../config/dbConnection');
 let jwt = require('jsonwebtoken');
 let _ = require('lodash');
 
-let mysql = require("mysql");
+Consts = require('../../config/const');
+let consts = new Consts();
+let secretKey = consts.secretKey;
 
-let secretKey = "minhaChaveSuperSecreta";
 
 function createToken(user) {
     return jwt.sign(_.omit(user, 'password'), secretKey, { expiresIn: 60*60*5 });
@@ -66,7 +67,7 @@ module.exports = function () {
 
     controller.loginUser = function (request, response) {
 
-        if (!request.body.email || !request.body.password || !request.body.name) {
+        if (!request.body.email || !request.body.password) {
             return response.status(400).send("verifique os campos");
         }
         getUserDB(request.body.email, function(user){
@@ -91,12 +92,18 @@ module.exports = function () {
     };
 
     controller.userCheck = function (request, response) {
-        if (!req.params.username) {
-            return res.status(400).send("You must send a username");
+        if (!request.params.email) {
+            return response.status(400).send({
+                status: 1,
+                messege: "You must send a username"
+            });
         }
-        getUserDB(req.params.username, function (user) {
-            if (!user) res.status(201).send({username: "OK"});
-            else res.status(400).send("A user with that username already exists");
+        getUserDB(request.params.email, function (user) {
+            if (!user) response.status(201).send({email: "OK"});
+            else response.status(400).send({
+                status: 2,
+                message: "A user with that username already exists"
+            });
         });
 
     };
