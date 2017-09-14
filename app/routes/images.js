@@ -9,4 +9,6 @@ module.exports = function(app) {
     //pega todos os usuários
     app.get('/imgs/me', controller.getImages);
 
+    app.post('imgs/upload')
+
 };
