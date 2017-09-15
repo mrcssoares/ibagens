@@ -5,6 +5,8 @@ let fs = require('fs');
 
 let port = 9005;
 
+global.imagePath = __dirname;
+
 app.set('port', port);
 http.createServer(app).listen(port, function(){
     console.log('Express Server escutando na porta ' + port);
