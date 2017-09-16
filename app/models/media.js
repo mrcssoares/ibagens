@@ -11,7 +11,9 @@ let execProcess = require('../utils/execprocess');
 * */
 let _managerStorage = multer.diskStorage({
     destination: '../imgs/uploads/' ,filename: function (request, file, callback) {
-        callback(null, file.fieldname + '_' + Date.now() + '.jpg');
+
+        let ext = file.originalname.split('.')[1];
+        callback(null, file.fieldname + '_' + Date.now() + '.'+ ext);
     }
 });
 
