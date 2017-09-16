@@ -3,7 +3,6 @@
  */
 let express = require('express');
 let load = require('express-load');
-let jwt = require('express-jwt');
 
 
 let bodyParser = require('body-parser');
@@ -13,12 +12,8 @@ let morgan = require('morgan');
 let method = require ('method-override');
 
 Consts = require('./const');
-let consts = new Consts();
-let secretKey = consts.secretKey;
 
-let jwtCheck = jwt({
-    secret: secretKey
-});
+
 
 module.exports = function(){
 
@@ -65,8 +60,6 @@ module.exports = function(){
 
     });
 
-
-    app.use('/imgs', jwtCheck);
 
     load('models',{cwd:'app'})
         .then('controller')

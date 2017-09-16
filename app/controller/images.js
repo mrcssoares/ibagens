@@ -4,12 +4,15 @@
 let db = require('../../config/dbConnection');
 const media = require('../models/media');
 
+
+
 module.exports = function () {
     let controller = {};
 
     controller.getImages = function (request, response) {
+        console.log(request.iduser);
 
-        db.query('SELECT * FROM images', function(err, rows) {
+        db.query('SELECT * FROM images WHERE idUser = ?', [request.iduser], function(err, rows) {
             if (err) throw err;
             response.status(200).send(rows);
         });
@@ -17,6 +20,9 @@ module.exports = function () {
     };
 
     controller.uploadImgs = function (request, response) {
+        //id do usuário extraido do token
+        console.log(request.iduser);
+        let idUser = request.iduser;
 
         let result = {};
         let upload = media.uploadImage.single('file');
@@ -24,18 +30,35 @@ module.exports = function () {
         upload(request, response, function (error) {
             let json = request.body;
 
+            //verificação de erro
             if(error) {
                 result.error = error.message;
                 return response.status(422).send(result);
             }
 
+            //segunda verificação em caso da primeira falhar
             if(request.file === undefined){
                 result.error = "child \"file\" fails because [\"file\" is required]";
                 return response.status(422).send(result);
             }
 
-            result.file = request.file.filename;
-            return response.status(200).send(result);
+            let image = {
+                idUser: idUser,
+                img : request.file.filename
+            };
+
+
+            db.query('INSERT INTO images SET ?',[image], function (err, result) {
+                if (err) throw err;
+
+                image.id = result.insertId;
+
+                return response.status(200).send({
+                    message: 'image upload successfully',
+                    image: image
+                });
+            });
+
         });
     };
 

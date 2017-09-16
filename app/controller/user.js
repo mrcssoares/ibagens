@@ -21,6 +21,15 @@ function getUserDB(email, done) {
     });
 }
 
+function updateTokenUser(user, newToken, done) {
+    user.token = newToken;
+    db.query('UPDATE users SET token = ? WHERE users.id = ?',[newToken, user.id], function (err, rows, fields) {
+        if(err) throw err;
+        console.log(user);
+        done(newToken);
+    })
+}
+
 module.exports = function () {
     let controller = {};
 
@@ -42,9 +51,9 @@ module.exports = function () {
                     user = {
                         name: request.body.name,
                         password: request.body.password,
-                        email: request.body.email
+                        email: request.body.email,
+                        token: createToken(newUser)
                     };
-
 
                     db.query('INSERT INTO users SET ?', [user], function(err, result){
                         if (err) throw err;
@@ -52,11 +61,11 @@ module.exports = function () {
                             id: result.insertId,
                             name: user.name,
                             password: user.password,
-                            email: user.email
+                            email: user.email,
                         };
                         response.status(201).send({
                             user: newUser,
-                            token: createToken(newUser)
+                            token: user.token
                         });
                     });
                 }
@@ -70,6 +79,7 @@ module.exports = function () {
         if (!request.body.email || !request.body.password) {
             return response.status(400).send("verifique os campos");
         }
+
         getUserDB(request.body.email, function(user){
             if (!user) {
                 return response.status(401).send({
@@ -83,10 +93,14 @@ module.exports = function () {
                     message: "The name or password don't match"
                 });
             }
-            response.status(201).send({
-                user: user,
-                token: createToken(user)
+
+            let token = updateTokenUser(user, createToken(user), function (token) {
+                user.token = token;
+                response.status(201).send({
+                    user: user
+                });
             });
+
         });
 
     };
