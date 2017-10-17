@@ -52,7 +52,7 @@ module.exports = function () {
                         name: request.body.name,
                         password: request.body.password,
                         email: request.body.email,
-                        token: createToken(newUser)
+                        token: ''
                     };
 
                     db.query('INSERT INTO users SET ?', [user], function(err, result){
@@ -64,8 +64,7 @@ module.exports = function () {
                             email: user.email,
                         };
                         response.status(201).send({
-                            user: newUser,
-                            token: user.token
+                            user: newUser
                         });
                     });
                 }
