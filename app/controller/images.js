@@ -3,6 +3,7 @@
  */
 let db = require('../../config/dbConnection');
 const media = require('../models/media');
+let fs   = require('fs');
 
 
 
@@ -60,6 +61,20 @@ module.exports = function () {
             });
 
         });
+    };
+
+    controller.defaultImage = function (request, response) {
+
+        let image = decodeURIComponent(request.params.image);
+        let srcImage = global.imagePath+image;
+
+        //Verifica se a imagem passada existe.
+        if (!fs.existsSync(srcImage)){
+            response.status(404).json({"error":"Image passada não existe."});
+            return;
+        }
+
+        response.sendfile(srcImage);
     };
 
 

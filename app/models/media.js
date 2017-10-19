@@ -10,7 +10,7 @@ let execProcess = require('../utils/execprocess');
 * Gerencia o local que o arquivo será salvo
 * */
 let _managerStorage = multer.diskStorage({
-    destination: '../imgs/uploads/' ,filename: function (request, file, callback) {
+    destination: 'imgs/uploads/' ,filename: function (request, file, callback) {
 
         let ext = file.originalname.split('.')[1];
         callback(null, file.fieldname + '_' + Date.now() + '.'+ ext);

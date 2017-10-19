@@ -11,6 +11,9 @@ module.exports = function(app) {
     app.get('/imgs/me', auth.ensureAuthorized, controller.getImages);
 
     //upload de uma imagem
-    app.post('/imgs/upload', auth.ensureAuthorized, controller.uploadImgs)
+    app.post('/imgs/upload', auth.ensureAuthorized, controller.uploadImgs);
+
+
+    app.get('/imgs/:image', controller.defaultImage);
 
 };

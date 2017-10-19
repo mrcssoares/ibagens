@@ -7,7 +7,8 @@ let fs = require('fs');
 
 let port = 9005;
 
-global.imagePath = __dirname;
+global.imagePath = __dirname + '/imgs/uploads/';
+console.log(global.imagePath);
 
 app.set('port', port);
 http.createServer(app).listen(port, function(){
