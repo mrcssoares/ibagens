@@ -8,12 +8,14 @@ module.exports = function(app) {
     const controller = app.controller.images;
 
     //pega todas as imagens (posteriormente do usuário)
-    app.get('/imgs/me', auth.ensureAuthorized, controller.getImages);
+    app.get('/imgs/me', auth.ensureAuthorized, controller.getImgs);
 
     //upload de uma imagem
     app.post('/imgs/upload', auth.ensureAuthorized, controller.uploadImgs);
 
 
-    app.get('/imgs/:image', controller.defaultImage);
+    app.get('/imgs/:image', controller.defaultImg);
+
+    app.get('/imgs/:commands/:image', controller.resizeImg);
 
 };
