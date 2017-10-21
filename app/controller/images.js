@@ -78,7 +78,7 @@ module.exports = function () {
         response.sendFile(srcImage);
     };
 
-    controller.resizeImg = function (request, response) {
+    controller.transformImg = function (request, response) {
         let image = decodeURIComponent(request.params.image);
         //separa nome e formato da imagem
         let name = decodeURIComponent(request.params.image).split('.')[0];
@@ -93,33 +93,69 @@ module.exports = function () {
         }
 
         let commands = decodeURIComponent(request.params.commands);
-        let outImage = global.imageCuston + name+'_resize_'+ commands.split(',')[0] +'.'+ ext;
 
-        //verifica se a imagem ja foi convertida nos formatos informados
-        if (!fs.existsSync(outImage)){
-            let command = `convert ${srcImage} -resize ${sizeIntelligent(commands.split(',')[0])} ${outImage}`;
-            console.log(command);
+        IdentifyCommands(commands.split(','));
+        // let outImage = global.imageCuston + name+'_resize_'+ commands.split(',')[0] +'.'+ ext;
+        //
+        // //verifica se a imagem ja foi convertida nos formatos informados
+        // if (!fs.existsSync(outImage)){
+        //     let command = `convert ${srcImage} -resize ${sizeIntelligent(commands.split(',')[0])} ${outImage}`;
+        //     console.log(command);
+        //
+        //     execProcess.result(command).then(value=>{
+        //         console.log(value);
+        //         response.sendfile(outImage);
+        //     }).catch(error => {
+        //         result.error = error;
+        //         response.status(500).send(result);
+        //     });
+        // }else{
+        //     console.log('imagem já convertida neste formato');
+        //     response.sendFile(outImage);
+        // }
 
-            execProcess.result(command).then(value=>{
-                console.log(value);
-                response.sendfile(outImage);
-            }).catch(error => {
-                result.error = error;
-                response.status(500).send(result);
-            });
-        }else{
-            console.log('imagem já convertida neste formato');
-            response.sendFile(outImage);
-        }
-
-
+        response.status(200).json({
+            success: "Não há da para ver aqui, pois estamos testando bb.",
+            commands: commands
+        });
     };
 
     return controller;
 
 };
 
+function IdentifyCommands(commands) {
+    console.log(commands);
+    //[ 'w_150', 'r_150', 'batata', 'arroz', 'mulheres' ]
+    if(commands.length == 1) {
+        if (commands[0].split('_')[0] === 'w') {
+            resize(commands[0].split('_')[1], null)
+        }
+        if(commands[0].split('_')[0] === 'h'){
+            resize(null, commands[0].split('_')[1])
+        }
+    }
+    if(commands.length > 1){
+        if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
+            resize(commands[0].split('_')[1], commands[1].split('_')[1])
+        }
+    }
+    // for(c in commands) {
+    //     if (commands[c].split('_')[0] === 'w') {
+    //         resize(commands[c].split('_')[0], null);
+    //     }
+    //     else if (commands[c].split('_')[0] === 'h' && c === 0) {
+    //         resize(null, commands[c].split('_')[1])
+    //     }
+    //     else if (commands[c].split('_')[0] === 'h' && c === 1) {
+    //
+    //     }
+    // }
+}
 
+function resize(w, h) {
+
+}
 /**
  * Função interna para garantir que a imagem não fará um resize desnecessário.
  */

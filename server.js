@@ -9,8 +9,8 @@ let port = 9005;
 
 global.imagePath = __dirname + '/imgs/uploads/';
 global.imageCuston = __dirname + '/imgs/custom/';
-console.log(global.imagePath);
-console.log(global.imageCuston);
+console.log('Local das imagens originais: '+global.imagePath);
+console.log('Local das imagens trasnformadas: '+global.imageCuston);
 
 app.set('port', port);
 http.createServer(app).listen(port, function(){

@@ -13,9 +13,10 @@ module.exports = function(app) {
     //upload de uma imagem
     app.post('/imgs/upload', auth.ensureAuthorized, controller.uploadImgs);
 
-
+    //retorna a imagem original
     app.get('/imgs/:image', controller.defaultImg);
 
-    app.get('/imgs/:commands/:image', controller.resizeImg);
+    //retorna a imagem com tratamentos
+    app.get('/imgs/:commands/:image', controller.transformImg);
 
 };
