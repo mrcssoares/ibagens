@@ -6,18 +6,20 @@ const media = require('../models/media');
 let execProcess = require('../utils/execprocess');
 let fs   = require('fs');
 
+Consts = require('../../config/const');
+let consts = new Consts();
+
+
 
 module.exports = function () {
     let controller = {};
 
     controller.getImgs = function (request, response) {
         console.log(request.iduser);
-
         db.query('SELECT * FROM images WHERE idUser = ?', [request.iduser], function(err, rows) {
             if (err) throw err;
             response.status(200).send(rows);
         });
-
     };
 
     controller.uploadImgs = function (request, response) {
@@ -93,73 +95,74 @@ module.exports = function () {
         }
 
         let commands = decodeURIComponent(request.params.commands);
+        let imgCommandsName = commands.replace(/,/g, '_');
 
-        IdentifyCommands(commands.split(','));
-        // let outImage = global.imageCuston + name+'_resize_'+ commands.split(',')[0] +'.'+ ext;
-        //
-        // //verifica se a imagem ja foi convertida nos formatos informados
-        // if (!fs.existsSync(outImage)){
-        //     let command = `convert ${srcImage} -resize ${sizeIntelligent(commands.split(',')[0])} ${outImage}`;
-        //     console.log(command);
-        //
-        //     execProcess.result(command).then(value=>{
-        //         console.log(value);
-        //         response.sendfile(outImage);
-        //     }).catch(error => {
-        //         result.error = error;
-        //         response.status(500).send(result);
-        //     });
-        // }else{
-        //     console.log('imagem já convertida neste formato');
-        //     response.sendFile(outImage);
-        // }
+        //split converte o elemento para vetor, possuindo ou  não o ','
+        let transforms = IdentifyCommands(commands.split(','));
+        let outImage = global.imageCuston + name + imgCommandsName + '.' + ext;
 
-        response.status(200).json({
-            success: "Não há da para ver aqui, pois estamos testando bb.",
-            commands: commands
-        });
+        //verifica se a imagem ja foi convertida nos formatos informados
+        if (!fs.existsSync(outImage)){
+            let command = `convert ${srcImage} -resize ${transforms} ${outImage}`;
+            console.log(command);
+
+            execProcess.result(command).then(value=>{
+                console.log(value);
+                response.sendFile(outImage);
+            }).catch(error => {
+                result.error = error;
+                response.status(500).send(result);
+            });
+        }else{
+            console.log('Imagem já convertida neste formato');
+            response.sendFile(outImage);
+        }
     };
 
     return controller;
 
 };
 
+//espera um vetor de comandos
 function IdentifyCommands(commands) {
     console.log(commands);
     //[ 'w_150', 'r_150', 'batata', 'arroz', 'mulheres' ]
-    if(commands.length == 1) {
+    if(commands.length === 1) {
         if (commands[0].split('_')[0] === 'w') {
-            resize(commands[0].split('_')[1], null)
+          return resize(commands[0].split('_')[1], null, consts.IM.rdf);
         }
         if(commands[0].split('_')[0] === 'h'){
-            resize(null, commands[0].split('_')[1])
+          return resize(null, commands[0].split('_')[1], consts.IM.rdf);
         }
     }
-    if(commands.length > 1){
+    if(commands.length === 2){
         if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
-            resize(commands[0].split('_')[1], commands[1].split('_')[1])
+            return resize(commands[0].split('_')[1], commands[1].split('_')[1], consts.IM.rdf);
+        }
+        if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w') {
+            return resize(commands[0].split('_')[1], commands[1].split('_')[1], consts.IM.rdf);
         }
     }
-    // for(c in commands) {
-    //     if (commands[c].split('_')[0] === 'w') {
-    //         resize(commands[c].split('_')[0], null);
-    //     }
-    //     else if (commands[c].split('_')[0] === 'h' && c === 0) {
-    //         resize(null, commands[c].split('_')[1])
-    //     }
-    //     else if (commands[c].split('_')[0] === 'h' && c === 1) {
-    //
-    //     }
-    // }
+    if(commands.length > 2){
+
+    }
+    return null;
 }
 
-function resize(w, h) {
-
+/*
+* w: altura
+* h: largura
+* i: influencia sobre o redimencionamento
+* */
+function resize(w, h, i) {
+    if(w && h)
+        return w + 'x' + h + i;
+    else if(w)
+        return w + 'x' + w + i;
+    else if(h)
+        return h + 'x' + h + i;
 }
-/**
- * Função interna para garantir que a imagem não fará um resize desnecessário.
- */
-let sizeIntelligent = (size) =>  size + '\\>';
+
 
 /**
  * Para o blur o site inteligente não funcionou, então foi necessário fazer uma calculo manual.
