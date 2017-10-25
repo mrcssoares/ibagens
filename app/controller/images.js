@@ -112,7 +112,7 @@ module.exports = function () {
                 response.status(500).send(result);
             });
         }else{
-            console.log('Imagem aproveitada da base ja convertida');
+            console.log('Aproveitando imagem já convertida.');
             response.sendFile(outImage);
         }
     };
@@ -135,6 +135,9 @@ flags[''] = '\\!';
 function IdentifyCommands(commands) {
     console.log(commands);
 
+    /*
+    * VAI SER UM switch case bonitão!!
+    * */
     //para apenas um parametro, esse conjunto de funções
     if(commands.length === 1) {
         //porcentagem passada
@@ -242,6 +245,22 @@ function resize(w, h, i) {
     if(w === undefined || w === null)
         return '';
 }
+
+/*
+* app
+* --controllers
+*   --images.js
+* --models
+*   --media.js
+* --routes
+*   --images.js
+* --utils
+*   --execprocess.js
+* config
+* --dbConnection.js
+* --express.js
+* --middlewares.js
+* */
 
 
 /**
