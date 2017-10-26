@@ -4,7 +4,6 @@
 module.exports = function(app) {
     const controller = app.controller.user;
 
-
     //pega todos os usuários
     app.get('/users', controller.getUsers);
 

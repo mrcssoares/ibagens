@@ -155,7 +155,7 @@ function IdentifyCommands(commands) {
             return '';
         }
 
-        //outros casos, acho que um com _ e letras apoós quebra, quebra mais não, coloquei um parse int.
+        //outros casos, acho que um com _ e letras após quebra, quebra mais não, coloquei um parse int.
         return resize(commands[0].split('_')[1] , null, flags['']);
 
     }
@@ -197,19 +197,29 @@ function IdentifyCommands(commands) {
             return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]]);
         }
 
+        //provisorio: caso um valor + o gray_scale
+        if (commands[0].split('_')[0] === 'w' && commands[1] === 'gray' || commands[0].split('_')[0] === 'h' && commands[1] === 'gray') {
+            return resize(commands[0].split('_')[1], null, flags['']+ flags[commands[1]] + flags[commands[2]]);
+        }
+
+        //mantendo o aspecto
+        if (commands[0].split('_')[0] === 'w' && commands[1] === 'fill' || commands[0].split('_')[0] === 'h' && commands[1] === 'fill') {
+            return resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]]);
+        }
+
         //corte malicioso com suporte a gray
         if(commands[0].split('_')[0] === 'w' && commands[1] === 'crop' || commands[0].split('_')[0] === 'h' && commands[1] === 'crop'){
-            return resize(commands[0].split('_')[1], null, flags[commands[1]]) + flags[commands[2]];
+            return resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]]);
         }
     }
 
     //se mais de dois parametros
     if(commands.length === 4) {
         if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
-            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]]) + flags[commands[3]];
+            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]] + flags[commands[3]]);
         }
         if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w') {
-            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]]) + flags[commands[3]];
+            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]]);
         }
     }
 
