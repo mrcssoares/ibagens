@@ -125,6 +125,7 @@ module.exports = function () {
 let flags = [];
 flags['fill'] = '^';
 flags['crop'] = '^ \ -gravity center -extent :wx:h';
+flags['adcrop'] = ' -resize \':wx<\'  -resize 50% -gravity center  -crop :LWx:LH+0+0 +repage';
 flags['gray'] = ' -colorspace Gray -gamma 2.2';
 flags[''] = '\\!';
 
@@ -187,7 +188,7 @@ function IdentifyCommands(commands) {
         return resize(commands[0].split('_')[1] , null, flags['']);
     }
 
-    //se mais de dois parametros
+    //se 3 parametros
     if(commands.length === 3){
         //por exemplo, duas dimenções mais crop ou gray
         if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
@@ -213,13 +214,23 @@ function IdentifyCommands(commands) {
         }
     }
 
-    //se mais de dois parametros
+    //se 4 parametros
     if(commands.length === 4) {
         if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
             return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]] + flags[commands[3]]);
         }
         if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w') {
             return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]]);
+        }
+    }
+
+    // #TODO se mais de dois parametros
+    if(commands.length === 5) {
+        if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h' && commands[2] === 'adcrop') {
+            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]], commands[3], commands[4]);
+        }
+        if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w' && commands[2] === 'adcrop') {
+            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]], commands[3], commands[4]);
         }
     }
 
@@ -231,7 +242,7 @@ function IdentifyCommands(commands) {
 * h: largura
 * i: influencia sobre o redimencionamento
 * */
-function resize(w, h, i) {
+function resize(w, h, i, lw, lh) {
     //removendo o que não for digito
     if(w)
         w = w.replace(/[^\d]+/g,'');
@@ -240,18 +251,28 @@ function resize(w, h, i) {
 
     //fazendo verificações para cortes
     if(i) {
-        console.log('i: '+i);
         if (w && h)
             i = i.replace(':w', w).replace(':h', h);
         if (w)
             i = i.replace(':w', w).replace(':h', w);
+        console.log('i: '+i);
+
     }
 
     //verificaçõoes para montar o resize + combinações
-    if(w && h)
-        return '-resize ' + w + 'x' + h + i;
-    else if(w)
+    if(w && h) {
+        console.log(lw, lh);
+        if (lw && lh) {
+            i = i.replace(':LW', lw).replace(':LH', lh);
+            console.log('dentro');
+            return '-resize ' + w + 'x' + h + i;
+        } else {
+            return '-resize ' + w + 'x' + h + i;
+        }
+        console.log('-resize ' + w + 'x' + h + i);
+    }else if(w) {
         return '-resize ' + w + 'x' + w + i;
+    }
     if(w === undefined || w === null)
         return '';
 }
