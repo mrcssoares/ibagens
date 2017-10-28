@@ -97,11 +97,21 @@ module.exports = function () {
 
         //split converte o elemento para vetor, possuindo ou  não o ','
         let transforms = IdentifyCommands(commands.split(','));
-        let outImage = global.imageCuston + name + imgCommandsName + '.' + ext;
+        let outImage = global.imageCuston + name + '_' + imgCommandsName + '.png';
+
+        console.log(transforms.length);
+        if(transforms.length > 1){
+            console.log('vamo zuar, vamo zuar vamo zuar');
+        }
 
         //verifica se a imagem ja foi convertida nos formatos informados
         if (!fs.existsSync(outImage)){
-            let command = `convert ${srcImage} ${transforms} ${outImage}`;
+
+            let command = `convert ${srcImage} ${transforms[0]} ${outImage}`;
+            if(transforms.length > 1){
+                command = command + ` && convert ${outImage} ${transforms[1]} ${outImage}`;
+            }
+
             console.log(command);
 
             execProcess.result(command).then(value=>{
@@ -121,17 +131,37 @@ module.exports = function () {
 
 };
 
+let cflags = {
+    fill: 'fill',
+    crop: 'crop',
+    adcrop: 'adcrop',
+    gray: 'gray',
+    circle: 'circle',
+    porcentage: 'p',
+    width: 'w',
+    height: 'h'
+};
+
 
 let flags = [];
-flags['fill'] = '^';
-flags['crop'] = '^ \ -gravity center -extent :wx:h';
-flags['adcrop'] = ' -resize \':wx<\'  -resize 50% -gravity center  -crop :LWx:LH+0+0 +repage';
-flags['gray'] = ' -colorspace Gray -gamma 2.2';
+flags[cflags.fill] = '^';
+flags[cflags.crop] = '^ \ -gravity center -extent :wx:h';
+flags[cflags.adcrop] = ' -resize \':wx<\'  -resize 50% -gravity center  -crop :LWx:LH+0+0 +repage';
+flags[cflags.gray] = ' -colorspace Gray -gamma 2.2';
+flags[cflags.circle] = '-resize x800 -resize \'800x<\' -resize 50% -gravity center -crop 400x400+0+0 +repage  \\( +clone -threshold -1 -negate -fill white -draw "circle 200,200 200,0" \\) -alpha off -compose copy_opacity -composite \\-auto-orient';
 flags[''] = '\\!';
+
+
+
+/*
+*
+*  let command = `convert ${srcImage} -resize x800 -resize '800x<' -resize 50% -gravity center -crop 400x400+0+0 +repage  \\( +clone -threshold -1 -negate -fill white -draw "circle 200,200 200,0" \\) -alpha off -compose copy_opacity -composite \\-auto-orient ${outImage}`;
+*  command += ` && convert ${outImage} -resize ${sizeIntelligent(size)} ${outImage}`;
+* */
 
 /**
  * commands: vetor de comandos [command, command, command, (...), command]
- * @return {string}
+ * @return {[string]}
  */
 function IdentifyCommands(commands) {
     console.log(commands);
@@ -139,102 +169,110 @@ function IdentifyCommands(commands) {
     /*
     * VAI SER UM switch case bonitão!!
     * */
-    //para apenas um parametro, esse conjunto de funções
-    if(commands.length === 1) {
-        //porcentagem passada
-        if(commands[0].split('_')[0] === 'p'){
-            return commands[0].split('_')[1]*100 + '%';
-        }
+    switch (commands.length) {
+        //para apenas um parametro, esse conjunto de funções
+        case 1:
+            //porcentagem passada
+            if (commands[0].split('_')[0] === cflags.porcentage) {
+                return [commands[0].split('_')[1] * 100 + '%'];
+            }
 
-        //escala de cinza
-        if(commands[0] === 'gray') {
-            return flags[commands[0]];
-        }
+            //escala de cinza
+            if (commands[0] === cflags.gray) {
+                return [flags[commands[0]]];
+            }
 
-        //aparentemente não faz nada so evita uma trava na requisição
-        if(commands[0] === 'fill'){
+            //aparentemente não faz nada so evita uma trava na requisição
+            if (commands[0] === cflags.fill) {
+                return [''];
+            }
+
+            if (commands[0] === cflags.circle) {
+                return [flags[commands[0]]];
+            }
+
+            //outros casos, acho que um com _ e letras após quebra, quebra mais não, coloquei um parse int.
+            return [resize(commands[0].split('_')[1], null, flags[''])];
+
+            break;
+
+        case 2:
+            if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
+                return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[''])];
+            }
+            if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
+                return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[''])];
+            }
+
+            //provisorio: caso um valor + o gray_scale
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.gray || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.gray) {
+                return [resize(commands[0].split('_')[1], null, flags['']) + flags[commands[1]]];
+            }
+
+            //mantendo o aspecto
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.fill || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.fill) {
+                return [resize(commands[0].split('_')[1], null, flags[commands[1]])];
+            }
+
+            //corte malicioso
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.crop || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.crop) {
+                return [resize(commands[0].split('_')[1], null, flags[commands[1]])];
+            }
+
+            //circulo malicioso
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.circle || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.circle) {
+                return [[flags[commands[1]]], resize(commands[0].split('_')[1], null, flags[''])];
+            }
+
+            return [resize(commands[0].split('_')[1], null, flags[''])];
+
+            break;
+        case 3:
+            //por exemplo, duas dimenções mais crop ou gray
+            if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
+                return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]])];
+            }
+            if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
+                return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]])];
+            }
+
+            //provisorio: caso um valor + o gray_scale
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.gray || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.gray) {
+                return [resize(commands[0].split('_')[1], null, flags[''] + flags[commands[1]] + flags[commands[2]])];
+            }
+
+            //mantendo o aspecto
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.fill || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.fill) {
+                return [resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]])];
+            }
+
+            //corte malicioso com suporte a gray
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.crop || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.crop) {
+                return [resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]])];
+            }
+            break;
+        case 4:
+             if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
+                    return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]] + flags[commands[3]])];
+            }
+            if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
+                return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]])];
+            }
+            break;
+
+            // #TODO advanced crop by resize.
+        case 5:
+            if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height && commands[2] === cflags.adcrop) {
+                return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]], commands[3], commands[4])];
+            }
+            if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width && commands[2] === cflags.adcrop) {
+                return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]], commands[3], commands[4])];
+            }
+            break;
+
+        default:
             return '';
-        }
-
-        //outros casos, acho que um com _ e letras após quebra, quebra mais não, coloquei um parse int.
-        return resize(commands[0].split('_')[1] , null, flags['']);
-
     }
-
-    //se dois parametros
-    if(commands.length === 2){
-        if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
-            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags['']);
-        }
-        if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w') {
-            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags['']);
-        }
-
-        //provisorio: caso um valor + o gray_scale
-        if (commands[0].split('_')[0] === 'w' && commands[1] === 'gray' || commands[0].split('_')[0] === 'h' && commands[1] === 'gray') {
-            return resize(commands[0].split('_')[1], null, flags['']) + flags[commands[1]];
-        }
-
-        //mantendo o aspecto
-        if (commands[0].split('_')[0] === 'w' && commands[1] === 'fill' || commands[0].split('_')[0] === 'h' && commands[1] === 'fill') {
-            return resize(commands[0].split('_')[1], null, flags[commands[1]]);
-        }
-
-        //corte malicioso
-        if(commands[0].split('_')[0] === 'w' && commands[1] === 'crop' || commands[0].split('_')[0] === 'h' && commands[1] === 'crop'){
-            return resize(commands[0].split('_')[1], null, flags[commands[1]]);
-        }
-
-        return resize(commands[0].split('_')[1] , null, flags['']);
-    }
-
-    //se 3 parametros
-    if(commands.length === 3){
-        //por exemplo, duas dimenções mais crop ou gray
-        if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
-            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]]);
-        }
-        if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w') {
-            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]]);
-        }
-
-        //provisorio: caso um valor + o gray_scale
-        if (commands[0].split('_')[0] === 'w' && commands[1] === 'gray' || commands[0].split('_')[0] === 'h' && commands[1] === 'gray') {
-            return resize(commands[0].split('_')[1], null, flags['']+ flags[commands[1]] + flags[commands[2]]);
-        }
-
-        //mantendo o aspecto
-        if (commands[0].split('_')[0] === 'w' && commands[1] === 'fill' || commands[0].split('_')[0] === 'h' && commands[1] === 'fill') {
-            return resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]]);
-        }
-
-        //corte malicioso com suporte a gray
-        if(commands[0].split('_')[0] === 'w' && commands[1] === 'crop' || commands[0].split('_')[0] === 'h' && commands[1] === 'crop'){
-            return resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]]);
-        }
-    }
-
-    //se 4 parametros
-    if(commands.length === 4) {
-        if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h') {
-            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]] + flags[commands[3]]);
-        }
-        if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w') {
-            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]]);
-        }
-    }
-
-    // #TODO se mais de dois parametros
-    if(commands.length === 5) {
-        if (commands[0].split('_')[0] === 'w' && commands[1].split('_')[0] === 'h' && commands[2] === 'adcrop') {
-            return resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]], commands[3], commands[4]);
-        }
-        if (commands[0].split('_')[0] === 'h' && commands[1].split('_')[0] === 'w' && commands[2] === 'adcrop') {
-            return resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]], commands[3], commands[4]);
-        }
-    }
-
-    return '';
 }
 
 /*
@@ -261,15 +299,18 @@ function resize(w, h, i, lw, lh) {
 
     //verificaçõoes para montar o resize + combinações
     if(w && h) {
-        console.log(lw, lh);
+
+        //resize avançado
         if (lw && lh) {
             i = i.replace(':LW', lw).replace(':LH', lh);
-            console.log('dentro');
+            console.log('advanced: '+ i);
             return '-resize ' + w + 'x' + h + i;
         } else {
             return '-resize ' + w + 'x' + h + i;
         }
+
         console.log('-resize ' + w + 'x' + h + i);
+
     }else if(w) {
         return '-resize ' + w + 'x' + w + i;
     }
