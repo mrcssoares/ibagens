@@ -5,6 +5,8 @@ let db = require('../../config/dbConnection');
 const media = require('../models/media');
 let execProcess = require('../utils/execprocess');
 let fs   = require('fs');
+// let im = require('imagemagick');
+
 
 let {Image} = require('../models/image.js');
 
@@ -120,7 +122,7 @@ module.exports = function () {
     controller.generateImg = function (request, response) {
         let commands = decodeURIComponent(request.params.commands);
         console.log(commands);
-        let imgCommandsName = commands.replace(/:/g, '_');
+        let imgCommandsName = commands.replace(/:/g, '_').replace(/ /g, '_');
         if(commands.split(':')[0] === 'name') {
             let fullName = commands.split(':')[1];
             console.log(fullName);

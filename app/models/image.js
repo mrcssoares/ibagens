@@ -13,7 +13,6 @@ class Image {
         return new Promise((resolve, reject) => {
             let short = fullName.split(' ').map( x => x[0]).join('');
             console.log(fullName);
-            console.log(short);
             let str = `---${short}---`;
 
             let hash = 0;
@@ -26,7 +25,7 @@ class Image {
                 let value = (hash >> (i * 8)) & 0xFF;
                 colour += ('00' + value.toString(16)).substr(-2);
             }
-            hashImg = hashImg.split(/ /g, '_');
+            console.log(hashImg);
             let name = `profile_${hashImg}.png`;
             let outImage = `${global.imageCuston}${name}`;
             let command = `convert -background '${colour}' -fill white -size 300x300  -gravity Center  -weight 100 -pointsize 150  label:'${short}' ${outImage}`;
@@ -38,6 +37,25 @@ class Image {
             });
         });
     }
+
+    generateImageByText(text, background, colour){
+        return new Promise((resolve, reject) => {
+            let outImage = `${global.imageCuston}${teste.split(/ /g, '_')}`;
+            let command = `convert -background '${background}' -fill ${colour} -size 300x300  -gravity Center  -weight 100 -pointsize 150  label:'${short}' ${outImage}`;
+            execProcess.result(command).then(_ =>{
+                resolve(name);
+            }).catch(error => {
+                reject(error);
+            });
+        });
+    }
 }
+
+/*
+* @oficinag3manaus
+* #VocêNoCAMARIM
+* @tocaproducer
+* @eubiaguedes_
+* */
 
 module.exports.Image = Image;
