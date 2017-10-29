@@ -2,9 +2,6 @@
  * Created by marcos on 13/09/17.
  */
 let multer  = require('multer');
-let fs   = require('fs');
-let path = require('path');
-let execProcess = require('../utils/execprocess');
 
 /*
 * Gerencia o local que o arquivo será salvo

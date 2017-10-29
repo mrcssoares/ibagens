@@ -16,7 +16,11 @@ module.exports = function(app) {
     //retorna a imagem original
     app.get('/imgs/:image', controller.defaultImg);
 
+    //gera uma nova imagem a partir dos parametros informados
+    app.get('/imgs/generate/:commands', controller.generateImg);
+
     //retorna a imagem com tratamentos
     app.get('/imgs/:commands/:image', controller.transformImg);
+
 
 };

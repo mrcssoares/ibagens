@@ -6,8 +6,7 @@ const media = require('../models/media');
 let execProcess = require('../utils/execprocess');
 let fs   = require('fs');
 
-
-
+let {Image} = require('../models/image.js');
 
 module.exports = function () {
     let controller = {};
@@ -83,7 +82,6 @@ module.exports = function () {
         //separa nome e formato da imagem
         let name = decodeURIComponent(request.params.image).split('.')[0];
         let ext  = decodeURIComponent(request.params.image).split('.')[1];
-
         let srcImage = global.imagePath+image;
 
         //Verifica se a imagem passada existe.
@@ -99,21 +97,13 @@ module.exports = function () {
         let transforms = IdentifyCommands(commands.split(','));
         let outImage = global.imageCuston + name + '_' + imgCommandsName + '.png';
 
-        console.log(transforms.length);
-        if(transforms.length > 1){
-            console.log('vamo zuar, vamo zuar vamo zuar');
-        }
-
         //verifica se a imagem ja foi convertida nos formatos informados
         if (!fs.existsSync(outImage)){
-
             let command = `convert ${srcImage} ${transforms[0]} ${outImage}`;
             if(transforms.length > 1){
                 command = command + ` && convert ${outImage} ${transforms[1]} ${outImage}`;
             }
-
             console.log(command);
-
             execProcess.result(command).then(value=>{
                 console.log(value);
                 response.sendFile(outImage);
@@ -126,6 +116,25 @@ module.exports = function () {
             response.sendFile(outImage);
         }
     };
+
+    controller.generateImg = function (request, response) {
+        let commands = decodeURIComponent(request.params.commands);
+        console.log(commands);
+        let imgCommandsName = commands.replace(/:/g, '_');
+        if(commands.split(':')[0] === 'name') {
+            let fullName = commands.split(':')[1];
+            console.log(fullName);
+            let name = new Image().generateImageByName(imgCommandsName, fullName).then(name => {
+                let path = `${global.imageCuston}${name}`;
+                console.log(path);
+                response.status(200).sendfile(path);
+            }).catch(error => {
+                response.status(500).send({error: 'error to generate image.'});
+            });
+        }else if(commands.split(':')[0] === 'text'){
+
+        }
+    }
 
     return controller;
 
@@ -187,9 +196,12 @@ function IdentifyCommands(commands) {
                 return [''];
             }
 
+            //circulo: com nenhum parametro de tamanho, circulo da imagem original
             if (commands[0] === cflags.circle) {
                 return [flags[commands[0]]];
             }
+            if(commands[0].split(':')[0] === 'name')
+                return commands[0].split(':')[1]
 
             //outros casos, acho que um com _ e letras após quebra, quebra mais não, coloquei um parse int.
             return [resize(commands[0].split('_')[1], null, flags[''])];
@@ -197,6 +209,7 @@ function IdentifyCommands(commands) {
             break;
 
         case 2:
+            //redimencionamento basico
             if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
                 return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[''])];
             }
@@ -219,23 +232,35 @@ function IdentifyCommands(commands) {
                 return [resize(commands[0].split('_')[1], null, flags[commands[1]])];
             }
 
-            //circulo malicioso
+            //circulo malicioso: com um parametro de tamanho
             if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.circle || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.circle) {
-                return [[flags[commands[1]]], resize(commands[0].split('_')[1], null, flags[''])];
+                return [flags[commands[1]], resize(commands[0].split('_')[1], null, flags[''])];
             }
 
             return [resize(commands[0].split('_')[1], null, flags[''])];
 
             break;
         case 3:
-            //por exemplo, duas dimenções mais crop ou gray
+            //verificando aos dois parametros de redimencionamento
             if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
-                return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]])];
+                //circulo malicioso: com os dois parametros de tamanho
+                if(commands[2] === cflags.circle){
+                    return [flags[commands[2]], resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[''])];
+                //por exemplo, duas dimenções mais crop ou gray
+                }else {
+                    return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]])];
+                }
             }
+            //tratando w e h invertidos :D pq? pq é lecal
             if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
-                return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]])];
+                if(commands[2] === cflags.circle){
+                    return [flags[commands[2]], resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[''])];
+                }else {
+                    return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]])];
+                }
             }
 
+            //verificando apenas um parametro de redimencionamento
             //provisorio: caso um valor + o gray_scale
             if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.gray || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.gray) {
                 return [resize(commands[0].split('_')[1], null, flags[''] + flags[commands[1]] + flags[commands[2]])];
@@ -250,13 +275,24 @@ function IdentifyCommands(commands) {
             if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.crop || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.crop) {
                 return [resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]])];
             }
+
             break;
         case 4:
-             if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
+            //redimencionamento normal mais dois parametros gray ou crop, ou gray ou fill
+            if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
+                if(commands[2] == cflags.circle){
+                    return [flags[commands[2]], resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[3]])];
+
+                }else {
                     return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]] + flags[commands[3]])];
+                }
             }
             if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
-                return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]])];
+                if(commands[2] == cflags.circle) {
+                    return [flags[commands[2]], resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[3]])];
+                }else {
+                    return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]])];
+                }
             }
             break;
 
