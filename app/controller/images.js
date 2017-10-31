@@ -5,7 +5,7 @@ let db = require('../../config/dbConnection');
 const media = require('../models/media');
 let execProcess = require('../utils/execprocess');
 let fs   = require('fs');
-// let im = require('imagemagick');
+let im = require('imagemagick');
 
 
 let {Image} = require('../models/image.js');
@@ -101,23 +101,47 @@ module.exports = function () {
 
         //verifica se a imagem ja foi convertida nos formatos informados
         if (!fs.existsSync(outImage)){
-            let command = `convert ${srcImage} ${transforms[0]} ${outImage}`;
-            if(transforms.length > 1){
-                command = command + ` && convert ${outImage} ${transforms[1]} ${outImage}`;
+            try {
+                if (transforms.length > 2) {
+                    im.identify(srcImage, function (err, features) {
+                        let command = `convert ${srcImage} -filter Gaussian -resize 95x95 -define filter:sigma=5.0 ${sizeManual(transforms[2], features)}  ${outImage}`;
+                        if (transforms.length > 3) {
+                            command = command + ` && convert ${outImage} ${transforms[3]} ${outImage}`;
+                        }
+                        console.log(command);
+                        execProcess.result(command).then(value => {
+                            console.log(value);
+                            response.sendFile(outImage);
+                        }).catch(error => {
+                            result.error = error;
+                            response.status(500).send(result);
+                        });
+                    });
+                } else {
+                    let command = `convert ${srcImage} ${transforms[0]} ${outImage}`;
+                    if (transforms.length > 1) {
+                        command = command + ` && convert ${outImage} ${transforms[1]} ${outImage}`;
+                    }
+                    console.log(command);
+                    execProcess.result(command).then(value => {
+                        console.log(value);
+                        response.sendFile(outImage);
+                    }).catch(error => {
+                        result.error = error;
+                        response.status(500).send(result);
+                    });
+                }
+            }catch (e){
+                console.log(e);
+                response.end();
             }
-            console.log(command);
-            execProcess.result(command).then(value=>{
-                console.log(value);
-                response.sendFile(outImage);
-            }).catch(error => {
-                result.error = error;
-                response.status(500).send(result);
-            });
         }else{
             console.log('Aproveitando imagem já convertida.');
             response.sendFile(outImage);
         }
     };
+
+
 
     controller.generateImg = function (request, response) {
         let commands = decodeURIComponent(request.params.commands);
@@ -129,7 +153,7 @@ module.exports = function () {
             let name = new Image().generateImageByName(imgCommandsName, fullName).then(name => {
                 let path = `${global.imageCuston}${name}`;
                 console.log(path);
-                response.status(200).sendfile(path);
+                response.status(200).sendFile(path);
             }).catch(error => {
                 response.status(500).send({error: 'error to generate image.'});
             });
@@ -149,6 +173,7 @@ let cflags = {
     gray: 'gray',
     circle: 'circle',
     porcentage: 'p',
+    blur: 'blur',
     width: 'w',
     height: 'h'
 };
@@ -159,7 +184,7 @@ flags[cflags.fill] = '^';
 flags[cflags.crop] = '^ \ -gravity center -extent :wx:h';
 flags[cflags.adcrop] = ' -resize \':wx<\'  -resize 50% -gravity center  -crop :LWx:LH+0+0 +repage';
 flags[cflags.gray] = ' -colorspace Gray -gamma 2.2';
-flags[cflags.circle] = '-resize x800 -resize \'800x<\' -resize 50% -gravity center -crop 400x400+0+0 +repage  \\( +clone -threshold -1 -negate -fill white -draw "circle 200,200 200,0" \\) -alpha off -compose copy_opacity -composite \\-auto-orient';
+flags[cflags.circle] = ' -resize x800 -resize \'800x<\' -resize 50% -gravity center -crop 400x400+0+0 +repage  \\( +clone -threshold -1 -negate -fill white -draw "circle 200,200 200,0" \\) -alpha off -compose copy_opacity -composite \\-auto-orient';
 flags[''] = '\\!';
 
 
@@ -202,8 +227,10 @@ function IdentifyCommands(commands) {
             if (commands[0] === cflags.circle) {
                 return [flags[commands[0]]];
             }
-            if(commands[0].split(':')[0] === 'name')
-                return commands[0].split(':')[1]
+
+            if(commands[0] === cflags.blur){
+                return [null,null,'']
+            }
 
             //outros casos, acho que um com _ e letras após quebra, quebra mais não, coloquei um parse int.
             return [resize(commands[0].split('_')[1], null, flags[''])];
@@ -239,6 +266,12 @@ function IdentifyCommands(commands) {
                 return [flags[commands[1]], resize(commands[0].split('_')[1], null, flags[''])];
             }
 
+            //circulo malicioso: com um parametro de tamanho
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.blur || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.blur) {
+                return [null, null, [commands[0].split('_')[1]]];
+            }
+
+
             return [resize(commands[0].split('_')[1], null, flags[''])];
 
             break;
@@ -248,8 +281,11 @@ function IdentifyCommands(commands) {
                 //circulo malicioso: com os dois parametros de tamanho
                 if(commands[2] === cflags.circle){
                     return [flags[commands[2]], resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[''])];
+                //aplicando o blur
+                }else if(commands[2] == cflags.blur) {
+                    return [null, null, [commands[0].split('_')[1], commands[1].split('_')[1]]];
                 //por exemplo, duas dimenções mais crop ou gray
-                }else {
+                }else{
                     return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]])];
                 }
             }
@@ -257,6 +293,10 @@ function IdentifyCommands(commands) {
             if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
                 if(commands[2] === cflags.circle){
                     return [flags[commands[2]], resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[''])];
+                //aplicando o blur
+                }else if(commands[2] == cflags.blur) {
+                    return [null, null, [commands[1].split('_')[1]], commands[0].split('_')[1]];
+                //por exemplo, duas dimenções mais crop ou gray
                 }else {
                     return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]])];
                 }
@@ -278,13 +318,31 @@ function IdentifyCommands(commands) {
                 return [resize(commands[0].split('_')[1], null, flags[commands[1]] + flags[commands[2]])];
             }
 
+            //blur's
+            if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.blur || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.blur) {
+                return [null, null,[commands[0].split('_')[1], commands[0].split('_')[1]], flags[cflags.blur]];
+            }
+
+            //blur's
+            if (commands[0].split('_')[0] === cflags.width && commands[2] === cflags.blur || commands[0].split('_')[0] === cflags.height && commands[2] === cflags.blur) {
+                return [null, null,[commands[0].split('_')[1], commands[0].split('_')[1]], flags[cflags.blur]];
+            }
+
+
+
             break;
         case 4:
             //redimencionamento normal mais dois parametros gray ou crop, ou gray ou fill
             if (commands[0].split('_')[0] === cflags.width && commands[1].split('_')[0] === cflags.height) {
-                if(commands[2] == cflags.circle){
+                if(commands[2] == cflags.circle && commands[3] != cflags.blur){
                     return [flags[commands[2]], resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[3]])];
-
+                //gray + blur
+                }else if(commands[2] == cflags.blur && commands[3] == cflags.gray || commands[3] == cflags.blur && commands[2] == cflags.gray) {
+                    return [null, null, [commands[0].split('_')[1], commands[1].split('_')[1], flags[cflags.gray]]];
+                //circler + blur
+                }else if(commands[2] == cflags.blur && commands[3] == cflags.circle || commands[3] == cflags.blur && commands[2] == cflags.circle) {
+                    return [null, null, [commands[0].split('_')[1], commands[1].split('_')[1], '' ], flags[cflags.circle]];
+                //w,h + crop ou gray
                 }else {
                     return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]] + flags[commands[3]])];
                 }
@@ -292,6 +350,14 @@ function IdentifyCommands(commands) {
             if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
                 if(commands[2] == cflags.circle) {
                     return [flags[commands[2]], resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[3]])];
+                //gray ou blur
+                }else if(commands[2] == cflags.blur && commands[3] == cflags.gray || commands[3] == cflags.blur && commands[2] == cflags.gray) {
+                    return [null, null, [commands[1].split('_')[1], commands[0].split('_')[1], flags[cflags.gray]]];
+                }
+                //circle + blur
+                else if(commands[2] == cflags.blur && commands[3] == cflags.circle || commands[3] == cflags.blur && commands[2] == cflags.circle) {
+                    return [null, null, [commands[1].split('_')[1], commands[0].split('_')[1], ''], flags[cflags.circle]];
+                //w,h + crop ou gray
                 }else {
                     return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]])];
                 }
@@ -370,22 +436,49 @@ function resize(w, h, i, lw, lh) {
 * --dbConnection.js
 * --express.js
 * --middlewares.js
+*       im.identify(srcImage, function(err, features) {
+                let command = `convert ${srcImage} -filter Gaussian -resize 95x95 -define filter:sigma=5.0 -resize ${sizeManual(size, features)}  ${outImage}`;
+                execProcess.result(command).then(value => {
+                    console.log(value);
+                    response.sendfile(outImage);
+                }).catch( error => {
+                    result.error = error;
+                    response.status(500).send(result);
+                });
+            });
+*
+*
+*
+*
 * */
 
 
 /**
  * Para o blur o site inteligente não funcionou, então foi necessário fazer uma calculo manual.
  */
-function sizeManual(size, file) {
-    let newWidth = size.split('x')[0];
-    let newheight = size.split('x')[1];
-
+function sizeManual(commands, file) {
+    let extra = '';
+    let newWidth, newheight;
+    if(commands.length == 0) {
+        return '-resize ' + file.width+'x'+file.height;
+    }else if(commands.length === 1){
+        newWidth = commands[0];
+        newheight = commands[0];
+    }else if(commands.length === 2){
+        newWidth = commands[0];
+        newheight = commands[1];
+    }else if(commands.length === 3){
+        newWidth = commands[0];
+        newheight = commands[1];
+        extra = commands[2];
+    }
+    console.log(commands);
     let newArea = newWidth * newheight;
     let oldArea = file.width * file.height;
 
     if (newArea < oldArea){
-        return size;
+        return '-resize ' + newWidth+'x'+newheight + extra;
     }else{
-        return file.width+'x'+file.height;
+        return '-resize ' + file.width+'x'+file.height + extra;
     }
 }
