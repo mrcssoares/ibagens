@@ -182,7 +182,7 @@ let cflags = {
 let flags = [];
 flags[cflags.fill] = '^';
 flags[cflags.crop] = '^ \ -gravity center -extent :wx:h';
-flags[cflags.adcrop] = ' -resize \':wx<\'  -resize 50% -gravity center  -crop :LWx:LH+0+0 +repage';
+flags[cflags.adcrop] = ' -crop :wx:h+:LW+:LH';
 flags[cflags.gray] = ' -colorspace Gray -gamma 2.2';
 flags[cflags.circle] = ' -resize x800 -resize \'800x<\' -resize 50% -gravity center -crop 400x400+0+0 +repage  \\( +clone -threshold -1 -negate -fill white -draw "circle 200,200 200,0" \\) -alpha off -compose copy_opacity -composite \\-auto-orient';
 flags[''] = '\\!';
@@ -210,7 +210,7 @@ function IdentifyCommands(commands) {
         case 1:
             //porcentagem passada
             if (commands[0].split('_')[0] === cflags.porcentage) {
-                return [commands[0].split('_')[1] * 100 + '%'];
+                return ['-resize '+ commands[0].split('_')[1] * 100 + '%'];
             }
 
             //escala de cinza
@@ -289,7 +289,7 @@ function IdentifyCommands(commands) {
                     return [resize(commands[0].split('_')[1], commands[1].split('_')[1], flags[commands[2]])];
                 }
             }
-            //tratando w e h invertidos :D pq? pq é lecal
+            //tratando w e h invertidos
             if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
                 if(commands[2] === cflags.circle){
                     return [flags[commands[2]], resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[''])];
@@ -320,15 +320,13 @@ function IdentifyCommands(commands) {
 
             //blur's
             if (commands[0].split('_')[0] === cflags.width && commands[1] === cflags.blur || commands[0].split('_')[0] === cflags.height && commands[1] === cflags.blur) {
-                return [null, null,[commands[0].split('_')[1], commands[0].split('_')[1]], flags[cflags.blur]];
+                return [null, null,[commands[0].split('_')[1], commands[0].split('_')[1]], flags[commands[2]]];
             }
 
             //blur's
             if (commands[0].split('_')[0] === cflags.width && commands[2] === cflags.blur || commands[0].split('_')[0] === cflags.height && commands[2] === cflags.blur) {
-                return [null, null,[commands[0].split('_')[1], commands[0].split('_')[1]], flags[cflags.blur]];
+                return [null, null,[commands[0].split('_')[1], commands[0].split('_')[1]], flags[commands[1]]];
             }
-
-
 
             break;
         case 4:
@@ -348,7 +346,7 @@ function IdentifyCommands(commands) {
                 }
             }
             if (commands[0].split('_')[0] === cflags.height && commands[1].split('_')[0] === cflags.width) {
-                if(commands[2] == cflags.circle) {
+                if(commands[2] == cflags.circle && commands[3] != cflags.blur) {
                     return [flags[commands[2]], resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[3]])];
                 //gray ou blur
                 }else if(commands[2] == cflags.blur && commands[3] == cflags.gray || commands[3] == cflags.blur && commands[2] == cflags.gray) {
@@ -362,6 +360,9 @@ function IdentifyCommands(commands) {
                     return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]] + flags[commands[3]])];
                 }
             }
+
+            if(commands[0].split('_')[0] === cflags.height && commands[1] == cflags.circle){}
+
             break;
 
             // #TODO advanced crop by resize.
@@ -373,6 +374,8 @@ function IdentifyCommands(commands) {
                 return [resize(commands[1].split('_')[1], commands[0].split('_')[1], flags[commands[2]], commands[3], commands[4])];
             }
             break;
+
+            //convert ThinkstockPhotos-487769015.jpg -crop 500x500+1000+100 teste.png
 
         default:
             return '';
@@ -408,9 +411,9 @@ function resize(w, h, i, lw, lh) {
         if (lw && lh) {
             i = i.replace(':LW', lw).replace(':LH', lh);
             console.log('advanced: '+ i);
-            return '-resize ' + w + 'x' + h + i;
+            return i;
         } else {
-            return '-resize ' + w + 'x' + h + i;
+            return i;
         }
 
         console.log('-resize ' + w + 'x' + h + i);
