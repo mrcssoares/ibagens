@@ -181,7 +181,7 @@ let cflags = {
 
 let flags = [];
 flags[cflags.fill] = '^';
-flags[cflags.crop] = '^ \ -gravity center -extent :wx:h';
+flags[cflags.crop] = '^ -gravity center -extent :wx:h';
 flags[cflags.adcrop] = ' -crop :wx:h+:LW+:LH';
 flags[cflags.gray] = ' -colorspace Gray -gamma 2.2';
 flags[cflags.circle] = ' -resize x800 -resize \'800x<\' -resize 50% -gravity center -crop 400x400+0+0 +repage  \\( +clone -threshold -1 -negate -fill white -draw "circle 200,200 200,0" \\) -alpha off -compose copy_opacity -composite \\-auto-orient';
@@ -411,14 +411,14 @@ function resize(w, h, i, lw, lh) {
         if (lw && lh) {
             i = i.replace(':LW', lw).replace(':LH', lh);
             console.log('advanced: '+ i);
-            return i;
+            return '-resize ' + w + 'x' + h + i;
         } else {
-            return i;
+            console.log('-resize ' + w + 'x' + h + i);
+            return '-resize ' + w + 'x' + h + i;
         }
 
-        console.log('-resize ' + w + 'x' + h + i);
-
     }else if(w) {
+        console.log('-resize ' + w + 'x' + h + i);
         return '-resize ' + w + 'x' + w + i;
     }
     if(w === undefined || w === null)
