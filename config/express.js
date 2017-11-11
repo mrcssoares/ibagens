@@ -70,6 +70,10 @@ module.exports = function(){
 
     app.use(method());
 
+    app.get('/ibagens', function (request, response) {
+       response.status(200).send('Bem vindo a API do transformador de imagens Ibagens! 😁 ')
+    });
+
 
 
     return app;

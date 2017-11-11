@@ -42,7 +42,7 @@ module.exports = function () {
 
     controller.postUser = function (request, response) {
             if (!request.body.email || !request.body.password || !request.body.name) {
-                return response.status(400).send("Verifique os campos");
+                return response.status(400).json("Verifique os campos");
             }
             getUserDB(request.body.email, function(user){
 
@@ -68,7 +68,7 @@ module.exports = function () {
                         });
                     });
                 }
-                else response.status(400).send("A user with that email already exists");
+                else response.status(400).json("A user with that email already exists");
             });
     };
 
