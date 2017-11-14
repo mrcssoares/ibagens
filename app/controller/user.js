@@ -11,6 +11,7 @@ let secretKey = consts.secretKey;
 
 
 function createToken(user) {
+    delete user.token;
     return jwt.sign(_.omit(user, 'password'), secretKey, { expiresIn: 60*60*5 });
 }
 
