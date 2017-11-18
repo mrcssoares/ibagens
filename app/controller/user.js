@@ -43,7 +43,7 @@ module.exports = function () {
 
     controller.postUser = function (request, response) {
             if (!request.body.email || !request.body.password || !request.body.name) {
-                return response.status(400).json("Verifique os campos");
+                return response.status(400).json("Check the fields");
             }
             getUserDB(request.body.email, function(user){
 
@@ -65,6 +65,7 @@ module.exports = function () {
                             email: user.email,
                         };
                         response.status(201).send({
+                            message: 'user successfully registered!',
                             user: newUser
                         });
                     });
@@ -77,7 +78,7 @@ module.exports = function () {
     controller.loginUser = function (request, response) {
 
         if (!request.body.email || !request.body.password) {
-            return response.status(400).send("verifique os campos");
+            return response.status(400).send("Check the fields");
         }
 
         getUserDB(request.body.email, function(user){
